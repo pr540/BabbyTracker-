@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Baby Registration</h2>
+        <p>Tell us about your little one</p>
+
+        <form action="/register-baby" method="post" enctype="multipart/form-data" class="auth-form">
+            <div class="avatar-upload">
+                <div class="avatar-preview">
+                    <img id="imagePreview" src="https://cdn-icons-png.flaticon.com/512/2919/2919600.png"
+                        alt="Baby Preview">
+                </div>
+                <label for="imageUpload" class="upload-btn"><i class="fa-solid fa-camera"></i> Upload Photo</label>
+                <input type='file' id="imageUpload" name="photo" accept=".png, .jpg, .jpeg"
+                    onchange="previewImage(this);" style="display:none;" />
+            </div>
+
+            <div class="input-group">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="name" placeholder="Baby's Name" required>
+            </div>
+
+            <button type="submit" class="primary-btn">Complete Setup</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                document.getElementById('imagePreview').src = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
+{% endblock %}

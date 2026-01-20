@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+sqlalchemy
+pydantic
+psycopg2-binary
+itsdangerous
+aiofiles

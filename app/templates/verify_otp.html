@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Verify OTP</h2>
+        <p>Sent to {{ phone }}</p>
+        <p class="hint">(Use 1234 for demo)</p>
+
+        {% if error %}
+        <div class="error-msg">{{ error }}</div>
+        {% endif %}
+
+        <form action="/login/verify" method="post" class="auth-form">
+            <input type="hidden" name="phone" value="{{ phone }}">
+            <div class="otp-inputs">
+                <input type="text" name="otp" placeholder="Enter OTP" required maxlength="4"
+                    style="text-align:center; letter-spacing: 4px;">
+            </div>
+            <button type="submit" class="primary-btn">Verify & Proceed</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
