@@ -20,7 +20,11 @@
    - User Request: "iam not geting otp"
    - Implementation: Added automatic +91 country code formatting for Indian numbers, improved error handling in send_sms, and added a diagnostic debug helper for development.
 
-6. **Documentation**
+6. **Docker Deployment**
+   - User Request: "iwant dpeolyment using docker"
+   - Implementation: Created Dockerfile, docker-compose.yml (with Postgres integration), and .dockerignore. Updated README with containerization instructions.
+
+7. **Documentation**
    - User Request: "pervious prompts anlayzed add read me file and prompts today .txt"
    - Implementation: Created README.md and prompts_today.txt.
 

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: babytracker
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/babytracker
+      - SECRET_KEY=super-secret-random-key
+      - TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxx
+      - TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxx
+      - TWILIO_PHONE_NUMBER=+1234567890
+    depends_on:
+      - db
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+
+volumes:
+  postgres_data:

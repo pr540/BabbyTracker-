@@ -45,11 +45,16 @@ BabyTracker is a premium, mobile-first web application designed to help parents 
    python -m uvicorn app.main:app --reload
    ```
 
-3. **Configure Twilio (Optional for real SMS)**:
-   Add your keys in `app/main.py`:
-   - `TWILIO_ACCOUNT_SID`
-   - `TWILIO_AUTH_TOKEN`
-   - `TWILIO_PHONE_NUMBER`
+### 🐳 Docker Deployment (Recommended)
+The easiest way to run BabyTracker with a full PostgreSQL database is using Docker Compose.
 
----
-*Created with love for modern parenting.*
+1. **Build and Start**:
+   ```bash
+   docker-compose up --build
+   ```
+   *This will automatically launch the FastAPI app on port 8000 and PostgreSQL on port 5432.*
+
+2. **Configure Credentials**:
+   Edit the `environment` section in `docker-compose.yml` to set your real Twilio and Database keys.
+
+## 🛠️ Technology Stack
