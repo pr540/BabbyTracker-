@@ -1,0 +1,31 @@
+### BabyTracker - Development Prompts (21 Jan 2026) ###
+
+1. **Refine Tabbed Navigation**
+   - Goal: Split the main dashboard into multi-screen architecture (Activity & Monitor).
+   - Implementation: Created activity.html and monitor.html, updated FastAPI routes.
+
+2. **Dashboard Redesign & Baby Photos**
+   - User Request: "analyzed image in home screen iwant babby's photos and content babby task events few images and remider screen we can move to next screen's icons also include babby tasks night montiroing two icons and sperate screeen"
+   - Implementation: Created home.html with large navigation cards, integrated baby photos across all screens, added category icons to tasks.
+
+3. **Random OTP Verification**
+   - User Request: "analyzed the images instead of demo otp radom througth a verfiy otp is done fix it"
+   - Implementation: Moved from hardcoded "1234" to random.randint(1000, 9999), redesigned verify_otp.html to match user's provided UI specification.
+
+4. **Mobile-Only Private SMS**
+   - User Request: "not impelent i enter mobile instead of i want otp in mobile only not use radom"
+   - Implementation: Integrated Twilio SMS API, removed on-screen OTP hints, ensured only the physical device receives the verification code.
+
+5. **OTP Delivery Issues & Formatting**
+   - User Request: "iam not geting otp"
+   - Implementation: Added automatic +91 country code formatting for Indian numbers, improved error handling in send_sms, and added a diagnostic debug helper for development.
+
+6. **Documentation**
+   - User Request: "pervious prompts anlayzed add read me file and prompts today .txt"
+   - Implementation: Created README.md and prompts_today.txt.
+
+---
+Development Session Summary:
+- Architecture: Twin-screen (Tasks/Monitor) with home hub.
+- Security: Real Twilio SMS OTP with phone formatting.
+- UX: Premium mobile-first design with categorical icons and progress indicators.
