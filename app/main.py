@@ -11,6 +11,12 @@ import os
 import shutil
 import random
 from typing import Optional
+from twilio.rest import Client
+
+# Twilio Credentials (User needs to fill these in for physical SMS delivery)
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "ACxxxxxxxxxxxxxxxxxxxxxxxx")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "xxxxxxxxxxxxxxxxxxxxxxxx")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "+1234567890")
 
 # Database Setup
 # User must ensure PostgreSQL is running. Defaulting to standard local credentials.
@@ -118,11 +124,28 @@ def get_db():
     finally:
         db.close()
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return None
-    return db.query(User).filter(User.id == user_id).first()
+def send_sms(to_phone: str, message: str):
+    try:
+        # Auto-format for India if no country code provided
+        if not to_phone.startswith('+'):
+            if len(to_phone) == 10:
+                to_phone = f"+91{to_phone}"
+            else:
+                to_phone = f"+{to_phone}" # Try to treat as raw country code prepended
+        
+        if "xxx" in TWILIO_ACCOUNT_SID:
+            print(f"DEBUG: Real Twilio credentials missing. SMS that would have been sent to {to_phone}: {message}")
+            return
+            
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        client.messages.create(
+            body=message,
+            from_=TWILIO_PHONE_NUMBER,
+            to=to_phone
+        )
+        print(f"SMS sent successfully to {to_phone}")
+    except Exception as e:
+        print(f"Failed to send SMS to {to_phone}: {str(e)}")
 
 # Routes
 
@@ -254,16 +277,27 @@ async def login_page(request: Request):
 
 @app.post("/login/otp")
 async def send_otp(request: Request, phone: str = Form(...), db: Session = Depends(get_db)):
-    # Mock OTP - In a real app, integrate Twilio/SNS here
-    # Check if user exists, if not create placeholder or wait for verify
-    # For simplicity, we assume OTP is always 1234
-    print(f"OTP for {phone}: 1234") 
-    return templates.TemplateResponse("verify_otp.html", {"request": request, "phone": phone})
+    # Random 4-digit OTP
+    otp_val = str(random.randint(1000, 9999))
+    request.session["otp_" + phone] = otp_val
+    
+    # Send via real SMS
+    send_sms(phone, f"Your BabyTracker Verification Code is: {otp_val}")
+    
+    print(f"OTP for {phone}: {otp_val}") 
+    
+    # Pass raw_otp to template ONLY if Twilio is unconfigured (for debugging)
+    template_data = {"request": request, "phone": phone}
+    if "xxx" in TWILIO_ACCOUNT_SID:
+        template_data["raw_otp"] = otp_val
+        
+    return templates.TemplateResponse("verify_otp.html", template_data)
 
 @app.post("/login/verify")
 async def verify_otp(request: Request, phone: str = Form(...), otp: str = Form(...), db: Session = Depends(get_db)):
-    if otp != "1234":
-        return templates.TemplateResponse("verify_otp.html", {"request": request, "phone": phone, "error": "Invalid OTP"})
+    stored_otp = request.session.get("otp_" + phone)
+    if not stored_otp or otp != stored_otp:
+        return templates.TemplateResponse("verify_otp.html", {"request": request, "phone": phone, "error": "Invalid or expired OTP", "raw_otp": stored_otp})
     
     # Auth success
     user = db.query(User).filter(User.phone_number == phone).first()
