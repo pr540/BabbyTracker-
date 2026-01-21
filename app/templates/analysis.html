@@ -33,11 +33,27 @@
     <div id="cries" class="list-section" style="display: none;">
         {% for cry in cries %}
         <div class="list-item">
-            <div class="item-icon cry-icon"><i class="fa-solid fa-face-sad-tear"></i></div>
-            <div class="item-details">
-                <span class="item-title">Crying</span>
-                <span class="item-info">{{ cry.timestamp.strftime('%Y-%m-%d %H:%M') }} - {{ cry.intensity }}</span>
+            <div class="item-icon cry-icon">
+                <i class="fa-solid {% if 'Voice' in cry.intensity %}fa-microphone{% else %}fa-face-sad-tear{% endif %}"></i>
             </div>
+            <div class="item-details">
+                <span class="item-title">
+                    {{ cry.intensity }}
+                    {% if 'Auto' in cry.intensity %}<span class="verified-badge"
+                        style="font-size: 0.6rem; background: #E0F2FE; color: #0369A1; padding: 2px 6px; border-radius: 4px; margin-left: 8px;"><i
+                            class="fa-solid fa-robot"></i> AI Sync</span>{% endif %}
+                </span>
+                <span class="item-info">{{ cry.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            {% if cry.audio_url %}
+            <div class="audio-player">
+                <audio id="audio-{{cry.id}}" src="{{cry.audio_url}}"></audio>
+                <button onclick="document.getElementById('audio-{{cry.id}}').play()"
+                    style="background: var(--primary-light); color: var(--primary); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

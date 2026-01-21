@@ -51,6 +51,9 @@ class Baby(Base):
     __tablename__ = "babies"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
+    gender = Column(String, default="Girl")
+    birth_date = Column(String, nullable=True)
+    weight = Column(String, nullable=True)
     photo_url = Column(String, nullable=True)
     parent_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.now)
@@ -123,20 +126,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
 
 # Routes
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request, db: Session = Depends(get_db)):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return RedirectResponse(url="/login")
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        request.session.clear()
-        return RedirectResponse(url="/login")
-        
-    if not user.baby:
-        return RedirectResponse(url="/register-baby")
-        
+async def get_dashboard_data(db: Session, user: User):
     baby = user.baby
     
     # Get baby status
@@ -171,7 +161,7 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
     else:
         night_start = now.replace(hour=20, minute=0, second=0, microsecond=0)
         night_end = (now + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
-        if night_start > now: # Means we are before 8 PM today, look at last night
+        if night_start > now: 
              night_start = (now - timedelta(days=1)).replace(hour=20, minute=0, second=0, microsecond=0)
              night_end = now.replace(hour=8, minute=0, second=0, microsecond=0)
 
@@ -192,7 +182,6 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
     # Tasks
     tasks = db.query(Task).filter(Task.baby_id == baby.id).all()
     if not tasks:
-        # Create default daily tasks if none exist
         default_tasks = [
             {"title": "Morning Feed", "category": "Feeding", "due_time": "08:00"},
             {"title": "Vitamin D Drops", "category": "Medicine", "due_time": "10:00"},
@@ -206,8 +195,7 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
         db.commit()
         tasks = db.query(Task).filter(Task.baby_id == baby.id).all()
 
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return {
         "baby": baby,
         "ongoing_sleep": ongoing_sleep,
         "recent_cries": recent_cries,
@@ -218,7 +206,46 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
         "night_cries": night_cries,
         "night_wakeups": night_wakeups,
         "night_sleep_hours": night_sleep_hours
-    })
+    }
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse(url="/login")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        request.session.clear()
+        return RedirectResponse(url="/login")
+    if not user.baby:
+        return RedirectResponse(url="/register-baby")
+        
+    data = await get_dashboard_data(db, user)
+    return templates.TemplateResponse("home.html", {"request": request, **data})
+
+@app.get("/tasks", response_class=HTMLResponse)
+async def tasks_page(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse(url="/login")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.baby:
+        return RedirectResponse(url="/")
+    
+    data = await get_dashboard_data(db, user)
+    return templates.TemplateResponse("tasks.html", {"request": request, **data})
+
+@app.get("/monitor", response_class=HTMLResponse)
+async def monitor_page(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse(url="/login")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.baby:
+        return RedirectResponse(url="/")
+    
+    data = await get_dashboard_data(db, user)
+    return templates.TemplateResponse("monitor.html", {"request": request, **data})
 
 # --- Auth Routes ---
 @app.get("/login", response_class=HTMLResponse)
@@ -248,6 +275,29 @@ async def verify_otp(request: Request, phone: str = Form(...), otp: str = Form(.
     request.session["user_id"] = user.id
     return RedirectResponse(url="/", status_code=303)
 
+@app.post("/update-baby")
+async def update_baby(
+    request: Request,
+    birth_date: Optional[str] = Form(None),
+    weight: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.baby:
+        return RedirectResponse(url="/", status_code=303)
+        
+    if birth_date:
+        user.baby.birth_date = birth_date
+    if weight:
+        user.baby.weight = weight
+        
+    db.commit()
+    return RedirectResponse(url="/profile?status=baby_updated", status_code=303)
+
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
@@ -262,6 +312,9 @@ async def register_baby_page(request: Request):
 async def register_baby(
     request: Request,
     name: str = Form(...),
+    gender: str = Form("Girl"),
+    birth_date: str = Form(...),
+    weight: Optional[str] = Form(None),
     photo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
@@ -289,7 +342,14 @@ async def register_baby(
             shutil.copyfileobj(photo.file, buffer)
         photo_url = f"/static/uploads/{filename}"
         
-    new_baby = Baby(name=name, photo_url=photo_url, parent_id=user.id)
+    new_baby = Baby(
+        name=name, 
+        gender=gender, 
+        birth_date=birth_date,
+        weight=weight,
+        photo_url=photo_url, 
+        parent_id=user.id
+    )
     db.add(new_baby)
     db.commit()
     
@@ -311,12 +371,15 @@ async def toggle_sleep(request: Request, db: Session = Depends(get_db)):
         ongoing.end_time = datetime.now()
         ongoing.is_sleeping = False
         msg = "sleep_ended"
+        target = "/monitor"
     else:
         new_sleep = SleepEvent(baby_id=baby.id, start_time=datetime.now())
         db.add(new_sleep)
+        msg = "sleep_started"
+        target = "/monitor"
     
     db.commit()
-    return RedirectResponse(url=f"/?status={msg}", status_code=303)
+    return RedirectResponse(url=f"{target}?status={msg}", status_code=303)
 
 @app.post("/cry")
 async def log_cry(request: Request, intensity: str = Form(...), db: Session = Depends(get_db)):
@@ -329,6 +392,32 @@ async def log_cry(request: Request, intensity: str = Form(...), db: Session = De
     db.add(new_cry)
     db.commit()
     return RedirectResponse(url="/?status=cry_logged", status_code=303)
+
+@app.post("/task/create")
+async def create_task(request: Request, title: str = Form(...), due_time: str = Form(...), db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.baby:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    new_task = Task(baby_id=user.baby.id, title=title, due_time=due_time, category="Custom")
+    db.add(new_task)
+    db.commit()
+    return RedirectResponse(url="/?status=task_created", status_code=303)
+
+@app.post("/task/skip/{task_id}")
+async def skip_task(task_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.baby:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    task = db.query(Task).filter(Task.id == task_id, Task.baby_id == user.baby.id).first()
+    if task:
+        db.delete(task) # Or mark as skipped if we have a status, here we just remove/skip
+        db.commit()
+    
+    return RedirectResponse(url="/?status=task_skipped", status_code=303)
 
 @app.post("/task/toggle/{task_id}")
 async def toggle_task(task_id: int, request: Request, db: Session = Depends(get_db)):
@@ -346,7 +435,7 @@ async def toggle_task(task_id: int, request: Request, db: Session = Depends(get_
     return RedirectResponse(url="/?status=task_updated", status_code=303)
 
 @app.post("/voice-log")
-async def voice_log(request: Request, audio: UploadFile = File(...), db: Session = Depends(get_db)):
+async def voice_log(request: Request, audio: UploadFile = File(...), intensity: Optional[str] = Form("Voice Detect"), db: Session = Depends(get_db)):
     # Handle voice blob upload
     user_id = request.session.get("user_id")
     user = db.query(User).filter(User.id == user_id).first()
@@ -361,7 +450,7 @@ async def voice_log(request: Request, audio: UploadFile = File(...), db: Session
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(audio.file, buffer)
         
-    new_cry = CryEvent(baby_id=user.baby.id, intensity="Voice Detect", timestamp=datetime.now(), audio_url=f"/static/uploads/voice/{filename}")
+    new_cry = CryEvent(baby_id=user.baby.id, intensity=intensity, timestamp=datetime.now(), audio_url=f"/static/uploads/voice/{filename}")
     db.add(new_cry)
     db.commit()
     

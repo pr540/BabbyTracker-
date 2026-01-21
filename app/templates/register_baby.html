@@ -22,6 +22,30 @@
                 <input type="text" name="name" placeholder="Baby's Name" required>
             </div>
 
+            <div class="input-group">
+                <i class="fa-solid fa-cake-candles"></i>
+                <input type="date" name="birth_date" placeholder="Birth Date" required>
+            </div>
+            
+            <div class="input-group">
+                <i class="fa-solid fa-weight-scale"></i>
+                <input type="text" name="weight" placeholder="Birth Weight (e.g. 3.2 kg)">
+            </div>
+            
+            <div class="gender-selection">
+                <p>Gender</p>
+                <div class="gender-options">
+                    <label class="gender-opt">
+                        <input type="radio" name="gender" value="Boy">
+                        <span><i class="fa-solid fa-mars"></i> Boy</span>
+                    </label>
+                    <label class="gender-opt">
+                        <input type="radio" name="gender" value="Girl" checked>
+                        <span><i class="fa-solid fa-venus"></i> Girl</span>
+                    </label>
+                </div>
+            </div>
+
             <button type="submit" class="primary-btn">Complete Setup</button>
         </form>
     </div>

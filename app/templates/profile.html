@@ -29,17 +29,22 @@
             </div>
         </div>
 
-        <h3>Baby Info</h3>
+        <h3 style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em;">Baby Info</h3>
         <div class="settings-card">
-            <div class="settings-item clickable">
+            <div class="settings-item">
+                <div class="settings-icon"><i class="fa-solid fa-venus-mars"></i></div>
+                <div class="settings-label">Gender</div>
+                <div class="settings-value">{{ baby.gender }}</div>
+            </div>
+            <div class="settings-item clickable" onclick="openEditModal('birth_date')">
                 <div class="settings-icon"><i class="fa-solid fa-cake-candles"></i></div>
                 <div class="settings-label">Birth Date</div>
-                <div class="settings-value">Not set <i class="fa-solid fa-chevron-right"></i></div>
+                <div class="settings-value">{{ baby.birth_date or 'Not set' }} <i class="fa-solid fa-chevron-right"></i></div>
             </div>
-            <div class="settings-item clickable">
+            <div class="settings-item clickable" onclick="openEditModal('weight')">
                 <div class="settings-icon"><i class="fa-solid fa-weight-scale"></i></div>
-                <div class="settings-label">Weight Tracking</div>
-                <div class="settings-value"><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="settings-label">Birth Weight</div>
+                <div class="settings-value">{{ baby.weight or 'Not set' }} <i class="fa-solid fa-chevron-right"></i></div>
             </div>
         </div>
 
@@ -50,4 +55,88 @@
         </div>
     </div>
 </div>
+<!-- Edit Baby Info Modal -->
+<div id="editBabyModal" class="emergency-modal">
+    <div class="modal-content" style="max-width: 320px;">
+        <h2 id="modalTitle">Edit Info</h2>
+        <form action="/update-baby" method="post" id="editBabyForm">
+            <div id="dateInputGroup" style="display:none; margin: 20px 0;">
+                <input type="date" name="birth_date" class="modal-input" value="{{ baby.birth_date }}">
+            </div>
+            <div id="weightInputGroup" style="display:none; margin: 20px 0;">
+                <input type="text" name="weight" class="modal-input" placeholder="e.g. 3.5 kg"
+                    value="{{ baby.weight }}">
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeEditModal()" class="cancel-btn">Cancel</button>
+                <button type="submit" class="save-btn">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditModal(field) {
+        const modal = document.getElementById('editBabyModal');
+        const title = document.getElementById('modalTitle');
+        const dateDiv = document.getElementById('dateInputGroup');
+        const weightDiv = document.getElementById('weightInputGroup');
+
+        dateDiv.style.display = 'none';
+        weightDiv.style.display = 'none';
+
+        if (field === 'birth_date') {
+            title.innerText = 'Setting Birth Date';
+            dateDiv.style.display = 'block';
+        } else {
+            title.innerText = 'Setting Birth Weight';
+            weightDiv.style.display = 'block';
+        }
+
+        modal.classList.add('show');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editBabyModal').classList.remove('show');
+    }
+</script>
+
+<style>
+    .modal-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 1rem;
+        outline: none;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .cancel-btn {
+        flex: 1;
+        background: #F3F4F6;
+        border: none;
+        padding: 12px;
+        border-radius: 50px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .save-btn {
+        flex: 1;
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 50px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+</style>
 {% endblock %}
