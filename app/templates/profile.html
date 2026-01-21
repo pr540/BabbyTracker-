@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            {% if baby.photo_url %}
+            <img src="{{ baby.photo_url }}" alt="{{ baby.name }}">
+            {% else %}
+            <i class="fa-regular fa-user"></i>
+            {% endif %}
+        </div>
+        <h2>{{ baby.name }}</h2>
+        <p>Parent: {{ user.phone_number }}</p>
+    </div>
+
+    <div class="settings-list">
+        <h3>App Settings</h3>
+        <div class="settings-card">
+            <div class="settings-item">
+                <div class="settings-icon"><i class="fa-solid fa-bell"></i></div>
+                <div class="settings-label">Notifications</div>
+                <div class="settings-toggle active"></div>
+            </div>
+            <div class="settings-item">
+                <div class="settings-icon"><i class="fa-solid fa-moon"></i></div>
+                <div class="settings-label">Dark Mode</div>
+                <div class="settings-toggle"></div>
+            </div>
+        </div>
+
+        <h3>Baby Info</h3>
+        <div class="settings-card">
+            <div class="settings-item clickable">
+                <div class="settings-icon"><i class="fa-solid fa-cake-candles"></i></div>
+                <div class="settings-label">Birth Date</div>
+                <div class="settings-value">Not set <i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+            <div class="settings-item clickable">
+                <div class="settings-icon"><i class="fa-solid fa-weight-scale"></i></div>
+                <div class="settings-label">Weight Tracking</div>
+                <div class="settings-value"><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+        </div>
+
+        <div style="margin-top: 32px;">
+            <a href="/logout" class="logout-link">
+                <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

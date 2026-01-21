@@ -540,13 +540,31 @@ body {
     color: var(--text-main);
 }
 
-.progress-info {
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.progress-text {
     font-size: 0.85rem;
-    background: var(--primary);
-    color: white;
-    padding: 2px 10px;
-    border-radius: 20px;
     font-weight: 600;
+    color: var(--primary);
+}
+
+.progress-bar {
+    width: 60px;
+    height: 8px;
+    background: #E5E7EB;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 4px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tasks-grid {
@@ -559,8 +577,97 @@ body {
     width: 100%;
 }
 
+/* Sync Indicator */
+.sync-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #059669;
+    background: #ECFDF5;
+    padding: 6px 12px;
+    border-radius: 50px;
+    margin-bottom: 16px;
+    width: fit-content;
+}
+
+.sync-indicator.offline {
+    color: #DC2626;
+    background: #FEF2F2;
+}
+
+/* Night Summary Card */
+.night-summary-card {
+    background: linear-gradient(135deg, #1E1B4B, #312E81);
+    color: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-soft);
+}
+
+.summary-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.summary-header i {
+    color: #FDE047;
+}
+
+.summary-stats {
+    display: flex;
+    justify-content: space-around;
+}
+
+.s-item {
+    text-align: center;
+}
+
+.s-val {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.s-lab {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+/* Task Row & Skip Button */
+.task-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.skip-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid #FEE2E2;
+    background: #FEF2F2;
+    color: #DC2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.skip-btn:hover {
+    background: #FEE2E2;
+}
+
+.skip-btn:active {
+    transform: scale(0.9);
+}
+
 .task-card {
-    width: 100%;
+    flex: 1;
     background: white;
     border: 1px solid #F3F4F6;
     border-radius: 16px;
@@ -675,8 +782,150 @@ body {
 
 .list-item,
 .task-card,
-.stat-card {
+.stat-card,
+.settings-card {
     animation: fadeInUp 0.4s ease forwards;
+}
+
+/* Profile Page */
+.profile-header {
+    text-align: center;
+    padding: 30px 0;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-header h2 {
+    font-size: 1.5rem;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.profile-header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.settings-list h3 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 24px 0 12px;
+}
+
+.settings-card {
+    background: white;
+    border-radius: 20px;
+    padding: 8px;
+    box-shadow: var(--shadow);
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 16px;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+}
+
+.settings-item.clickable:active {
+    background: #F9FAFB;
+}
+
+.settings-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #F3F4F6;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-label {
+    flex: 1;
+    font-weight: 500;
+}
+
+.settings-value {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-toggle {
+    width: 44px;
+    height: 24px;
+    background: #E5E7EB;
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.settings-toggle::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+.settings-toggle.active {
+    background: var(--primary);
+}
+
+.settings-toggle.active::after {
+    transform: translateX(20px);
+}
+
+.logout-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #EF4444;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 16px;
+    background: #FEF2F2;
+    border-radius: 16px;
+    transition: transform 0.2s;
+}
+
+.logout-link:active {
+    transform: scale(0.98);
 }
 
 .baby-header-photo {

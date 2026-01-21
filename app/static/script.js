@@ -105,6 +105,84 @@ function showToast(message, iconClass = 'fa-check-circle') {
     }, 3000);
 }
 
+// Connection Monitoring
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+function updateOnlineStatus() {
+    const status = document.getElementById('syncStatus');
+    if (!status) return;
+
+    if (navigator.onLine) {
+        status.classList.remove('offline');
+        status.innerHTML = '<i class="fa-solid fa-cloud-check"></i> <span>Connected</span>';
+        syncOfflineData();
+    } else {
+        status.classList.add('offline');
+        status.innerHTML = '<i class="fa-solid fa-cloud-slash"></i> <span>Offline Mode</span>';
+    }
+}
+
+// Offline Storage Logic
+const OFFLINE_QUEUE_KEY = 'baby_tracker_offline_queue';
+
+function queueOfflineAction(url, body) {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+    queue.push({ url, body, timestamp: Date.now() });
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    showToast('Action saved offline', 'fa-cloud');
+}
+
+async function syncOfflineData() {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+    if (queue.length === 0) return;
+
+    showToast(`Syncing ${queue.length} items...`, 'fa-sync fa-spin');
+
+    for (const item of queue) {
+        try {
+            await fetch(item.url, {
+                method: 'POST',
+                body: item.body
+            });
+        } catch (err) {
+            console.error('Sync failed for item', err);
+        }
+    }
+
+    localStorage.removeItem(OFFLINE_QUEUE_KEY);
+    showToast('All data synced!', 'fa-cloud-check');
+    setTimeout(() => window.location.reload(), 1500);
+}
+
+// Intercept Forms for Offline Support
+document.addEventListener('submit', function (e) {
+    if (!navigator.onLine) {
+        const form = e.target;
+        if (form.method.toLowerCase() === 'post') {
+            e.preventDefault();
+            const formData = new FormData(form);
+            queueOfflineAction(form.action, formData);
+        }
+    }
+});
+
+// Notifications
+function requestNotificationPermission() {
+    if ('Notification' in window) {
+        Notification.requestPermission();
+    }
+}
+
+function sendAlert(title, body) {
+    if (Notification.permission === 'granted') {
+        new Notification(title, {
+            body: body,
+            icon: 'https://cdn-icons-png.flaticon.com/512/2919/2919600.png'
+        });
+    }
+}
+
 function setupVoiceRecorder() {
     const btn = document.getElementById('voiceBtn');
     if (!btn) return;
@@ -115,47 +193,32 @@ function setupVoiceRecorder() {
 
     btn.addEventListener('click', async () => {
         if (!isRecording) {
-            // Start Recording
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
-
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
+                mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     const formData = new FormData();
                     formData.append("audio", audioBlob);
 
-                    // Send to backend
-                    const response = await fetch('/voice-log', {
-                        method: 'POST',
-                        body: formData
-                    });
-
+                    const response = await fetch('/voice-log', { method: 'POST', body: formData });
                     if (response.ok) {
                         showToast('Voice recorded successfully', 'fa-microphone');
                         setTimeout(() => window.location.reload(), 1000);
                     } else {
                         showToast('Failed to save recording', 'fa-times');
                     }
-
                     audioChunks = [];
                 };
-
                 mediaRecorder.start();
                 isRecording = true;
                 btn.classList.add('recording');
                 btn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop Recording';
-
             } catch (err) {
-                console.error("Mic access denied", err);
                 showToast('Microphone access needed', 'fa-exclamation');
             }
         } else {
-            // Stop Recording
             mediaRecorder.stop();
             isRecording = false;
             btn.classList.remove('recording');
@@ -163,4 +226,19 @@ function setupVoiceRecorder() {
         }
     });
 }
-document.addEventListener('DOMContentLoaded', setupVoiceRecorder);
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    updateOnlineStatus();
+    requestNotificationPermission();
+    setupVoiceRecorder();
+});
+
+// Handle Profile Toggles
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('settings-toggle')) {
+        e.target.classList.toggle('active');
+        const label = e.target.parentElement.querySelector('.settings-label').innerText;
+        showToast(`${label} updated`, 'fa-gear');
+    }
+});

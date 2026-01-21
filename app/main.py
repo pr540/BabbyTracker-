@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from starlette.middleware.sessions import SessionMiddleware
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import shutil
 import random
@@ -58,6 +58,7 @@ class Baby(Base):
     parent = relationship("User", back_populates="baby")
     sleeps = relationship("SleepEvent", back_populates="baby")
     cries = relationship("CryEvent", back_populates="baby")
+    tasks = relationship("Task", back_populates="baby")
 
 class SleepEvent(Base):
     __tablename__ = "sleep_events"
@@ -90,9 +91,6 @@ class Task(Base):
     completed_at = Column(DateTime, nullable=True)
     
     baby = relationship("Baby", back_populates="tasks")
-
-# Update Baby model to include tasks
-Baby.tasks = relationship("Task", back_populates="baby")
 
 # Create Tables
 Base.metadata.create_all(bind=engine)
@@ -165,6 +163,32 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
     minutes = int((total_sleep_seconds % 3600) // 60)
     sleep_duration_today = f"{hours}h {minutes}m"
 
+    # Night Summary (Previous night 8 PM to Today 8 AM)
+    now = datetime.now()
+    if now.hour < 8:
+        night_start = (now - timedelta(days=1)).replace(hour=20, minute=0, second=0, microsecond=0)
+        night_end = now.replace(hour=8, minute=0, second=0, microsecond=0)
+    else:
+        night_start = now.replace(hour=20, minute=0, second=0, microsecond=0)
+        night_end = (now + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
+        if night_start > now: # Means we are before 8 PM today, look at last night
+             night_start = (now - timedelta(days=1)).replace(hour=20, minute=0, second=0, microsecond=0)
+             night_end = now.replace(hour=8, minute=0, second=0, microsecond=0)
+
+    night_cries = db.query(CryEvent).filter(CryEvent.baby_id == baby.id, CryEvent.timestamp >= night_start, CryEvent.timestamp <= night_end).count()
+    night_wakeups = db.query(SleepEvent).filter(SleepEvent.baby_id == baby.id, SleepEvent.end_time >= night_start, SleepEvent.end_time <= night_end).count()
+    
+    # Night Sleep Duration
+    night_sleeps = db.query(SleepEvent).filter(SleepEvent.baby_id == baby.id, SleepEvent.start_time >= night_start, SleepEvent.start_time <= night_end).all()
+    night_sleep_seconds = 0
+    for s in night_sleeps:
+        if s.end_time:
+            night_sleep_seconds += (s.end_time - s.start_time).total_seconds()
+        elif s.is_sleeping:
+            night_sleep_seconds += (min(now, night_end) - s.start_time).total_seconds()
+            
+    night_sleep_hours = round(night_sleep_seconds / 3600, 1)
+
     # Tasks
     tasks = db.query(Task).filter(Task.baby_id == baby.id).all()
     if not tasks:
@@ -190,7 +214,10 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
         "cry_count_today": cry_count_today,
         "sleep_count_today": sleep_count_today,
         "sleep_duration_today": sleep_duration_today,
-        "tasks": tasks
+        "tasks": tasks,
+        "night_cries": night_cries,
+        "night_wakeups": night_wakeups,
+        "night_sleep_hours": night_sleep_hours
     })
 
 # --- Auth Routes ---
@@ -387,3 +414,12 @@ async def analysis(request: Request, db: Session = Depends(get_db)):
         "chart_cry": cry_data,
         "baby": baby
     })
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.baby:
+        return RedirectResponse(url="/login")
+    
+    return templates.TemplateResponse("profile.html", {"request": request, "baby": user.baby, "user": user})
