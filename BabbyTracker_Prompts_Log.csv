@@ -1,0 +1,29 @@
+Date,Category,Prompt/Task,Matter,Status
+2026-01-21,Feature,Implement physical SMS OTP via Twilio API,"Replaced the simulated console output with real Twilio SMS capability. Configured environment variables (SID, TOKEN, PHONE) and added logic to auto-format phone numbers to +91 (India) for reliable delivery.",Completed
+2026-01-21,UI/UX,Remove on-screen OTP hints for security,"Modified verify_otp.html to stop displaying the code in the 'raw_otp' debug field, ensuring users must actually receive the SMS to log in.",Completed
+2026-01-21,Feature,Add 'Resend OTP' link to verification page,Implemented a countdown-based or instant resend link that triggers a new random 4-digit code and dispatches a fresh SMS via the FastAPI backend.,Completed
+2026-01-21,Bug Fix,Fix CSS syntax error in progress bar,"Corrected line 103 of index.html where a curly brace was missing in the style='width: {{...}}%' attribute, which was causing the tracking bars to render as full width or empty.",Completed
+2026-01-22,Bug Fix,Fix baby cry audio recording & upload,Debugged the client-side MediaRecorder. Fixed the blob selection logic so that 5-second 'cry' clips are correctly captured and POSTed to the /cry endpoint with a unique filename.,Completed
+2026-01-22,Feature,Enable cry audio playback in activity logs,Added HTML5 <audio> players to the 'Recent Activity' cards. Users can now click 'Play' on any cry event to hear the recording immediately.,Completed
+2026-01-22,Feature,Implement 8-hour night monitoring capture,Configured the monitoring page to automatically start recording cycles during the 10 PM to 6 AM window. These long-form logs are stored in 'night_recordings' for morning review.,Completed
+2026-01-22,UI/UX,Add sleep goal progress bar,Created a premium-styled progress indicator on the dashboard that calculates sleep duration against the recommended 8-hour daily target.,Completed
+2026-01-22,Bug Fix,Resolve 500 server error on monitoring dashboard,Fixed a NullReference error in main.py where the dashboard was attempting to access 'baby' attributes before a baby was registered or when session data was stale.,Completed
+2026-01-22,Optimization,Upgrade backend to JSON-response,Switched recording and task logging endpoints to return JSON instead of full HTML redirects. This allows the UI to update markers and activity feeds instantly without a page refresh.,Completed
+2026-01-22,Documentation,Create detailed Excel Log with Matter,"Compiled all coding prompts, bug fixes, and feature implementations into a structured Excel file (BabbyTracker_Prompts_Log.xlsx) with technical descriptions of each change.",Completed
+2026-01-22,Bug Fix,Resolve IDE CSS parsing errors in monitor.html,Completely removed Jinja syntax from the inline style attribute by using a 'data-progress' attribute and delegating width application to JavaScript. This satisfies the IDE's strict CSS validator.,Completed
+2026-01-22,Automation,Automated Excel Log Update,"Updated the prompt logging system to capture the entire project history from Dec 2025 to present, ensuring all developmental steps are documented.",Completed
+2026-01-20,Feature,Enhance Baby Tracker with Offline Sync & Voice Tracking,"Implemented local storage synchronization for offline tracking. Added baby voice/cry recording capablities and night-time summary reports (wake-ups, sleep duration).",Completed
+2026-01-20,Feature,Parent Controls & SMS Alerts,Added parent control settings and configured automated SMS alerts for registered mobile numbers when distress is detected.,Completed
+2026-01-19,DevOps,Confirm Pipeline Success,"Verified the CI/CD pipeline execution after recent commits, ensuring that migrations and builds were successful.",Completed
+2026-01-06,Bug Fix,Fix CSS 'at-rule or selector expected' error,Resolved a syntax issue in history.html where a Jinja variable in the width calculation was breaking the CSS parser.,Completed
+2026-01-06,Bug Fix,Fix HTML Property Value Error in History,"Corrected the rendering of confidence scores in the progress bar, ensuring weights and percentages were correctly formatted as strings.",Completed
+2026-01-04,Refactor,Refactor Prediction Page into dedicated route,Moved the prediction form from the homepage to a dedicated /prediction_page. Updated navigation links and layout templates accordingly.,Completed
+2025-12-31,Bug Fix,Fix Flask-SQLAlchemy ModuleNotFoundError,Resolved environment configuration issue by properly installing flask-sqlalchemy and updating requirements.txt.,Completed
+2025-12-31,Documentation,Convert Project Docs to .docx,Generated Microsoft Word versions of the project documentation for offline reporting and archival purposes.,Completed
+2025-12-27,Bug Fix,Resolve 404 Font Errors,Fixed pathing issues for static font assets that were causing browser console errors and incorrect typography rendering.,Completed
+2025-12-27,Bug Fix,Fix 'Skeleton Page' (Static Assets Load Failure),Debugged Flask static file serving. Ensured that CSS and JS bundles were correctly linked and served from the /static/ directory.,Completed
+2025-12-26,DevOps,Fix Docker Build Error (uv pip install),Corrected the Dockerfile instructions for 'uv' package manager to ensure dependency installation completes successfully.,Completed
+2025-12-26,DevOps,Automate Docker Hub Push,Configured GitHub Actions to build and push the BabbyTracker image to Docker Hub on every main branch merge.,Completed
+2025-12-25,DevOps,Add GitHub Action Workflows for Secrets,Implemented secure secret management in GitHub Actions for handling Docker credentials and API keys.,Completed
+2025-12-25,DevOps,Fix Invalid Container Name Error,Renamed Docker container from 'speech ' to 'speech_tracker' to remove invalid spaces and satisfy Docker naming conventions.,Completed
+2025-12-18,Optimization,Optimize Docker Build Speed,"Reordered Dockerfile layers to maximize build cache effectiveness, significantly reducing image rebuild times.",Completed

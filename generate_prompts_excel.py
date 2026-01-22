@@ -3,7 +3,23 @@ from datetime import datetime
 
 # Data for yesterday and today prompts/tasks with detailed "Matter"
 data = [
-    # Yesterday - Jan 21
+    # Jan 20
+    {
+        "Date": "2026-01-20", 
+        "Category": "Feature", 
+        "Prompt/Task": "Enhance Baby Tracker with Offline Sync & Voice Tracking", 
+        "Matter": "Implemented local storage synchronization for offline tracking. Added baby voice/cry recording capablities and night-time summary reports (wake-ups, sleep duration).",
+        "Status": "Completed"
+    },
+    {
+        "Date": "2026-01-20", 
+        "Category": "Feature", 
+        "Prompt/Task": "Parent Controls & SMS Alerts", 
+        "Matter": "Added parent control settings and configured automated SMS alerts for registered mobile numbers when distress is detected.",
+        "Status": "Completed"
+    },
+
+    # Jan 21
     {
         "Date": "2026-01-21", 
         "Category": "Feature", 
@@ -33,7 +49,7 @@ data = [
         "Status": "Completed"
     },
     
-    # Today - Jan 22
+    # Jan 22
     {
         "Date": "2026-01-22", 
         "Category": "Bug Fix", 
@@ -89,13 +105,20 @@ data = [
         "Prompt/Task": "Resolve IDE CSS parsing errors in monitor.html", 
         "Matter": "Completely removed Jinja syntax from the inline style attribute by using a 'data-progress' attribute and delegating width application to JavaScript. This satisfies the IDE's strict CSS validator.",
         "Status": "Completed"
+    },
+    {
+        "Date": "2026-01-22", 
+        "Category": "Automation", 
+        "Prompt/Task": "Automated Excel Log Update", 
+        "Matter": "Updated the prompt logging system to capture project history from Jan 20 to present.",
+        "Status": "Completed"
     }
 ]
 
 df = pd.DataFrame(data)
 
 # File name
-file_name = "BabbyTracker_Prompts_Log.xlsx"
+file_name = "BabbyTracker_Full_Prompts_Log.xlsx"
 
 try:
     # Save to Excel with optimized column widths
