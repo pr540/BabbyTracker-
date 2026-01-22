@@ -72,8 +72,10 @@
                     }}%</span>
             </div>
             <div style="height: 6px; background: rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden;">
+                {% set sleep_pct = [((night_sleep_hours | default(0)) / 8 * 100), 100] | min %}
                 <div
-                    style="height: 100%; background: #FBBF24; width: {{ [((night_sleep_hours | default(0)) / 8 * 100), 100] | min }}%; border-radius: 10px; box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);">
+                    data-progress="{{ sleep_pct }}"
+                    style="height: 100%; background: #FBBF24; border-radius: 10px; box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);">
                 </div>
             </div>
         </div>
