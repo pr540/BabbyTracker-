@@ -65,10 +65,37 @@
         <h3>Recent Activity</h3>
     </div>
     <div class="recent-preview">
-        {% for cry in recent_cries[:3] %}
-        <div class="preview-item">
-            <span class="preview-time">{{ cry.timestamp.strftime('%H:%M') }}</span>
-            <span class="preview-text">Cry detected ({{ cry.intensity }})</span>
+        {% for cry in recent_cries[:5] %}
+        <div class="preview-item"
+            style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 12px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div
+                    style="width: 32px; height: 32px; background: #FCE7F3; border-radius: 80%; display: flex; align-items: center; justify-content: center; color: #DB2777;">
+                    <i class="fa-solid fa-microphone"></i>
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-weight: 600; font-size: 0.9rem;">{{ cry.intensity }}</span>
+                        {% if 'Auto' in cry.intensity %}
+                        <span class="badge"
+                            style="font-size: 0.65rem; background: #E0F2FE; color: #0369A1; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 3px;">
+                            <i class="fa-solid fa-robot"></i> AI Sync
+                        </span>
+                        {% endif %}
+                    </div>
+                    <span class="preview-time" style="font-size: 0.75rem; color: var(--text-muted);">{{
+                        cry.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+            </div>
+            {% if cry.audio_url %}
+            <div class="listening-option">
+                <audio id="home-audio-{{cry.id}}" src="{{cry.audio_url}}"></audio>
+                <button onclick="document.getElementById('home-audio-{{cry.id}}').play()"
+                    style="background: var(--primary); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

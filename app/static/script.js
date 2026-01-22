@@ -294,10 +294,16 @@ async function setupMonitorMode() {
         }, 500);
     }
 
+    let monitorMediaRecorder;
+    let monitorAudioChunks = [];
+    let recordingInterval;
+    let currentStream;
+
     btn.addEventListener('click', async () => {
         if (!isMonitoring) {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const stream = currentStream;
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
                 microphone = audioContext.createMediaStreamSource(stream);
@@ -315,12 +321,6 @@ async function setupMonitorMode() {
                     const array = new Uint8Array(bufferLength);
                     analyser.getByteFrequencyData(array);
 
-                    // Baby cry frequency range: ~400Hz to ~3000Hz
-                    // For 44.1kHz sample rate, 1024 FFT: 
-                    // Bin size = 44100 / 1024 = 43Hz per bin.
-                    // Start bin (400Hz) = 400 / 43 = ~10
-                    // End bin (3000Hz) = 3000 / 43 = ~70
-
                     let values = 0;
                     let babyBinsCount = 0;
                     for (let i = 10; i < 70; i++) {
@@ -329,12 +329,10 @@ async function setupMonitorMode() {
                     }
                     const babyAverage = values / babyBinsCount;
 
-                    // Noise floor check
                     let noiseFloor = 0;
-                    for (let i = 0; i < 10; i++) noiseFloor += array[i]; // Lower frequencies (pet barks, rumbles)
+                    for (let i = 0; i < 10; i++) noiseFloor += array[i];
                     const noiseAverage = noiseFloor / 10;
 
-                    // Threshold: Baby sound must be significantly louder than noise floor
                     if (babyAverage > 35 && babyAverage > (noiseAverage * 1.5)) {
                         const now = Date.now();
                         if (now - lastAlertTime > 15000) {
@@ -343,6 +341,46 @@ async function setupMonitorMode() {
                         }
                     }
                 };
+
+                // Night Recording Feature (8-hour window: 10 PM - 6 AM)
+                const checkNightAndRecord = () => {
+                    const now = new Date();
+                    const hour = now.getHours();
+                    const isNightTime = (hour >= 22 || hour < 6); // Exactly 8 hours
+
+                    if (isNightTime) {
+                        startNightClip(stream);
+                    }
+                };
+
+                function startNightClip(stream) {
+                    if (monitorMediaRecorder && monitorMediaRecorder.state === 'recording') return;
+
+                    monitorAudioChunks = [];
+                    monitorMediaRecorder = new MediaRecorder(stream);
+                    monitorMediaRecorder.ondataavailable = (e) => monitorAudioChunks.push(e.data);
+                    monitorMediaRecorder.onstop = async () => {
+                        const blob = new Blob(monitorAudioChunks, { type: 'audio/webm' });
+                        const formData = new FormData();
+                        formData.append("audio", blob);
+                        formData.append("duration", 60); // 1 minute clips
+
+                        fetch('/upload-night-recording', { method: 'POST', body: formData })
+                            .catch(err => console.error("Failed to upload night recording"));
+                    };
+
+                    monitorMediaRecorder.start();
+                    // Stop after 60 seconds and start next if still monitoring
+                    setTimeout(() => {
+                        if (isMonitoring && monitorMediaRecorder.state === 'recording') {
+                            monitorMediaRecorder.stop();
+                        }
+                    }, 60000);
+                }
+
+                // Initial check and set interval
+                checkNightAndRecord();
+                recordingInterval = setInterval(checkNightAndRecord, 65000); // Check every ~1 min
 
                 isMonitoring = true;
                 btn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop Monitoring';
@@ -361,6 +399,15 @@ async function setupMonitorMode() {
         if (scriptProcessor) scriptProcessor.disconnect();
         if (microphone) microphone.disconnect();
         if (audioContext) audioContext.close();
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+        if (recordingInterval) clearInterval(recordingInterval);
+        if (monitorMediaRecorder && monitorMediaRecorder.state === 'recording') {
+            monitorMediaRecorder.stop();
+        }
+
         isMonitoring = false;
         btn.innerHTML = '<i class="fa-solid fa-power-off"></i> Start Monitoring';
         btn.classList.remove('active');
@@ -377,13 +424,53 @@ async function setupMonitorMode() {
         showToast('BABY CRY DETECTED!', 'fa-triangle-exclamation');
         sendAlert('Baby Alert', 'Baby-specific frequency sound detected.');
 
-        const formData = new FormData();
-        formData.append("intensity", `Auto Detect (Baby Voice Pattern)`);
-
+        // Record a 5-second clip of the actual cry for parents
+        let cryRecorder;
+        let cryChunks = [];
         try {
-            await fetch('/cry', { method: 'POST', body: formData });
-        } catch (e) {
-            queueOfflineAction('/cry', formData);
+            if (!currentStream) throw new Error("No active stream");
+
+            // Reuse the existing stream from setupMonitorMode
+            cryRecorder = new MediaRecorder(currentStream);
+            cryRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) cryChunks.push(e.data);
+            };
+            cryRecorder.onstop = async () => {
+                const blob = new Blob(cryChunks, { type: 'audio/webm' });
+                console.log("Cry recording stopped. Blob size:", blob.size);
+
+                if (blob.size < 100) {
+                    console.warn("Blob too small, skipping upload");
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append("intensity", `Auto Detect (Baby Voice Pattern)`);
+                formData.append("audio", blob, "cry_capture.webm");
+
+                try {
+                    const response = await fetch('/cry', { method: 'POST', body: formData });
+                    const result = await response.json();
+                    console.log("Cry upload result:", result);
+                    if (response.ok && result.audio_url) {
+                        showToast('Cry recorded & analyzed', 'fa-microphone-lines');
+                    } else {
+                        console.error("Cry upload failed or no audio_url", result);
+                    }
+                } catch (e) {
+                    console.error("Fetch error during cry upload", e);
+                    queueOfflineAction('/cry', formData);
+                }
+            };
+            cryRecorder.start();
+            setTimeout(() => {
+                if (cryRecorder.state === 'recording') cryRecorder.stop();
+            }, 5000);
+        } catch (err) {
+            console.error("Cry recording failed", err);
+            const formData = new FormData();
+            formData.append("intensity", `Auto Detect (Frequency only)`);
+            fetch('/cry', { method: 'POST', body: formData });
         }
     }
 }

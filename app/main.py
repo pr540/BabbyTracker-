@@ -68,6 +68,7 @@ class Baby(Base):
     sleeps = relationship("SleepEvent", back_populates="baby")
     cries = relationship("CryEvent", back_populates="baby")
     tasks = relationship("Task", back_populates="baby")
+    night_recordings = relationship("NightRecording", back_populates="baby")
 
 class SleepEvent(Base):
     __tablename__ = "sleep_events"
@@ -100,6 +101,16 @@ class Task(Base):
     completed_at = Column(DateTime, nullable=True)
     
     baby = relationship("Baby", back_populates="tasks")
+
+class NightRecording(Base):
+    __tablename__ = "night_recordings"
+    id = Column(Integer, primary_key=True, index=True)
+    baby_id = Column(Integer, ForeignKey("babies.id"))
+    timestamp = Column(DateTime, default=datetime.now)
+    audio_url = Column(String)
+    duration = Column(Integer) # In seconds
+    
+    baby = relationship("Baby", back_populates="night_recordings")
 
 # Create Tables
 Base.metadata.create_all(bind=engine)
@@ -218,6 +229,8 @@ async def get_dashboard_data(db: Session, user: User):
         db.commit()
         tasks = db.query(Task).filter(Task.baby_id == baby.id).all()
 
+    night_recordings = db.query(NightRecording).filter(NightRecording.baby_id == baby.id).order_by(NightRecording.timestamp.desc()).limit(10).all()
+
     return {
         "baby": baby,
         "ongoing_sleep": ongoing_sleep,
@@ -228,7 +241,8 @@ async def get_dashboard_data(db: Session, user: User):
         "tasks": tasks,
         "night_cries": night_cries,
         "night_wakeups": night_wakeups,
-        "night_sleep_hours": night_sleep_hours
+        "night_sleep_hours": night_sleep_hours,
+        "night_recordings": night_recordings
     }
 
 @app.get("/", response_class=HTMLResponse)
@@ -416,16 +430,43 @@ async def toggle_sleep(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url=f"{target}?status={msg}", status_code=303)
 
 @app.post("/cry")
-async def log_cry(request: Request, intensity: str = Form(...), db: Session = Depends(get_db)):
+async def log_cry(
+    request: Request, 
+    intensity: str = Form(...), 
+    audio: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    print(f"DEBUG: Cry POST received. Intensity: {intensity}")
     user_id = request.session.get("user_id")
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.baby:
-         return RedirectResponse(url="/login", status_code=303)
+         return JSONResponse({"status": "error", "message": "Unauthorized"}, status_code=401)
 
-    new_cry = CryEvent(baby_id=user.baby.id, intensity=intensity, timestamp=datetime.now())
+    audio_url = None
+    if audio and audio.filename and len(audio.filename) > 0:
+        print(f"DEBUG: Audio file detected: {audio.filename}")
+        upload_dir = "app/static/uploads/cries"
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"cry_{user.baby.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.webm"
+        file_path = os.path.join(upload_dir, filename)
+        
+        try:
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(audio.file, buffer)
+            audio_url = f"/static/uploads/cries/{filename}"
+            print(f"DEBUG: Audio saved to {audio_url}")
+        except Exception as e:
+            print(f"DEBUG: Failed to save audio: {e}")
+
+    new_cry = CryEvent(
+        baby_id=user.baby.id, 
+        intensity=intensity, 
+        timestamp=datetime.now(),
+        audio_url=audio_url
+    )
     db.add(new_cry)
     db.commit()
-    return RedirectResponse(url="/?status=cry_logged", status_code=303)
+    return JSONResponse({"status": "success", "audio_url": audio_url})
 
 @app.post("/task/create")
 async def create_task(request: Request, title: str = Form(...), due_time: str = Form(...), db: Session = Depends(get_db)):
@@ -489,6 +530,36 @@ async def voice_log(request: Request, audio: UploadFile = File(...), intensity: 
     db.commit()
     
     return JSONResponse({"status": "success", "message": "Voice recorded"})
+
+@app.post("/upload-night-recording")
+async def upload_night_recording(
+    request: Request, 
+    audio: UploadFile = File(...), 
+    duration: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    user_id = request.session.get("user_id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.baby:
+        return JSONResponse({"status": "error", "message": "Unauthorized"}, status_code=401)
+        
+    upload_dir = "app/static/uploads/night"
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f"night_{user.baby.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.webm"
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(audio.file, buffer)
+        
+    new_rec = NightRecording(
+        baby_id=user.baby.id, 
+        audio_url=f"/static/uploads/night/{filename}",
+        duration=duration
+    )
+    db.add(new_rec)
+    db.commit()
+    
+    return JSONResponse({"status": "success", "message": "Night recording saved"})
 
 @app.get("/analysis", response_class=HTMLResponse)
 async def analysis(request: Request, db: Session = Depends(get_db)):

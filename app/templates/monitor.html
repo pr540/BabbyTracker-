@@ -64,6 +64,19 @@
                 <span class="s-lab">Sleep</span>
             </div>
         </div>
+        <!-- 8hr Sleep Goal Progress -->
+        <div class="sleep-goal-progress" style="margin-top: 20px; padding: 0 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.8rem; font-weight: 600; opacity: 0.9;">8h Sleep Goal</span>
+                <span style="font-size: 0.8rem; font-weight: 700;">{{ ((night_sleep_hours | default(0)) / 8 * 100) | round | int
+                    }}%</span>
+            </div>
+            <div style="height: 6px; background: rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden;">
+                <div
+                    style="height: 100%; background: #FBBF24; width: {{ [((night_sleep_hours | default(0)) / 8 * 100), 100] | min }}%; border-radius: 10px; box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);">
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Actions -->
@@ -90,8 +103,8 @@
                 <div class="monitor-status">
                     <i class="fa-solid fa-video-slash"></i>
                     <div class="m-text">
-                        <h4>Baby Monitor Mode</h4>
-                        <p id="monitorLabel">Monitoring for cries & wakeups</p>
+                        <h4>Audio Monitoring & Capture</h4>
+                        <p id="monitorLabel">Capturing 8hr night-time audio clips</p>
                     </div>
                 </div>
                 <button id="toggleMonitorBtn" class="monitor-toggle">
@@ -99,6 +112,44 @@
                 </button>
             </div>
         </div>
+<!-- Night Recordings List -->
+<div class="recordings-section" style="margin-top: 32px;">
+    <div class="section-header"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.1rem; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-file-audio" style="color: var(--primary);"></i> Night Recordings
+        </h3>
+        <span class="badge"
+            style="background: var(--bg-soft); color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 20px;">Last
+            Night</span>
+    </div>
+
+    <div class="recordings-list" style="display: flex; flex-direction: column; gap: 12px;">
+        {% if night_recordings %}
+        {% for rec in night_recordings %}
+        <div class="recording-item"
+            style="background: white; padding: 16px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; font-size: 0.9rem;">{{ rec.timestamp.strftime('%H:%M %p') }}</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">{{ (rec.duration / 60) | round | int }} min
+                    clip</span>
+            </div>
+            <audio controls style="width: 100%; height: 35px; border-radius: 8px;">
+                <source src="{{ rec.audio_url }}" type="audio/webm">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div
+            style="text-align: center; padding: 32px; background: var(--bg-soft); border-radius: 16px; color: var(--text-muted);">
+            <i class="fa-solid fa-moon-stars" style="font-size: 2rem; margin-bottom: 12px; display: block;"></i>
+            <p>No night recordings yet. Start monitoring tonight.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
         <div class="stat-card" style="margin-top: 24px; text-align: left;">
             <p><i class="fa-solid fa-info-circle"></i> Place the phone near the baby. Keep the app open.</p>
         </div>
