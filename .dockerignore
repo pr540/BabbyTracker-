@@ -11,3 +11,7 @@ venv/
 .vscode
 *.db
 *.log
+node_modules/
+frontend-react/node_modules/
+dist/
+frontend-react/dist/

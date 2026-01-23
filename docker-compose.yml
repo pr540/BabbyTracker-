@@ -13,9 +13,9 @@ services:
       - "5432:5432"
 
   web:
-    build: .
-    ports:
-      - "8000:8000"
+    build: 
+      context: .
+      dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/babytracker
       - SECRET_KEY=super-secret-random-key
@@ -24,12 +24,16 @@ services:
       - TWILIO_PHONE_NUMBER=+1234567890
     depends_on:
       - db
-    # No volumes for app/static since they are moved to backend/frontend
-    # If developing, you can add them:
-    # volumes:
-    #   - ./backend:/app/backend
-    #   - ./frontend:/app/frontend
-    #   - ./db:/app/db
+    # Frontend will communicate via container name 'web'
+
+  frontend:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - web
 
 volumes:
   postgres_data:

@@ -2,15 +2,13 @@ import random
 import os
 from twilio.rest import Client
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db.models import User, OTP
 from datetime import datetime, timedelta
-from fastapi.templating import Jinja2Templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="frontend/templates")
 
 # Twilio Credentials
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "ACxxxxxxxxxxxxxxxxxxxxxxxx")
@@ -27,6 +25,7 @@ def send_sms(to_phone: str, message: str):
                 to_phone = f"+{to_phone}"
         
         if "xxx" in TWILIO_ACCOUNT_SID:
+            # Still print to console for debugging, but user won't see it on UI
             print(f"DEBUG: Real Twilio credentials missing. SMS that would have been sent to {to_phone}: {message}")
             return
             
@@ -40,10 +39,6 @@ def send_sms(to_phone: str, message: str):
     except Exception as e:
         print(f"Failed to send SMS to {to_phone}: {str(e)}")
 
-@router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
 @router.post("/login/otp")
 async def send_otp(request: Request, phone: str = Form(...), db: Session = Depends(get_db)):
     # Random 4-digit OTP
@@ -54,19 +49,22 @@ async def send_otp(request: Request, phone: str = Form(...), db: Session = Depen
     db.add(new_otp)
     db.commit()
     
-    # Store in session for easy retrieval on verify page (optional but helpful)
+    # Store in session for consistency (though phone is passed in verify too)
     request.session["phone"] = phone
     
     # Send via real SMS
     send_sms(phone, f"Your BabyTracker Verification Code is: {otp_val}")
     
-    print(f"OTP for {phone}: {otp_val}") 
+    # CRITICAL: Always print to console for local development so user can proceed
+    print("\n" + "!"*60)
+    print(f" !!! NEW OTP FOR {phone}: {otp_val} !!! ")
+    print("!"*60 + "\n")
     
-    template_data = {"request": request, "phone": phone}
-    if "xxx" in TWILIO_ACCOUNT_SID:
-        template_data["raw_otp"] = otp_val
-        
-    return templates.TemplateResponse("verify_otp.html", template_data)
+    return JSONResponse({
+        "status": "success", 
+        "message": "OTP sent check terminal if SMS fails",
+        "otp_debug": otp_val if "xxx" in TWILIO_ACCOUNT_SID else "REDACTED"
+    })
 
 @router.post("/login/verify")
 async def verify_otp(request: Request, phone: str = Form(...), otp: str = Form(...), db: Session = Depends(get_db)):
@@ -80,7 +78,7 @@ async def verify_otp(request: Request, phone: str = Form(...), otp: str = Form(.
     ).order_by(OTP.created_at.desc()).first()
 
     if not db_otp:
-        return templates.TemplateResponse("verify_otp.html", {"request": request, "phone": phone, "error": "Invalid or expired OTP"})
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
     
     # Mark as used
     db_otp.is_used = True
@@ -94,9 +92,13 @@ async def verify_otp(request: Request, phone: str = Form(...), otp: str = Form(.
         db.commit()
     
     request.session["user_id"] = user.id
-    return RedirectResponse(url="/", status_code=303)
+    return JSONResponse({
+        "status": "success", 
+        "message": "Authenticated",
+        "has_baby": user.baby is not None
+    })
 
 @router.get("/logout")
 async def logout(request: Request):
     request.session.clear()
-    return RedirectResponse(url="/login")
+    return JSONResponse({"status": "success", "message": "Logged out"})
