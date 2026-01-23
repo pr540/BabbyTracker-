@@ -24,9 +24,12 @@ services:
       - TWILIO_PHONE_NUMBER=+1234567890
     depends_on:
       - db
-    volumes:
-      - ./app:/app/app
-      - ./static:/app/static
+    # No volumes for app/static since they are moved to backend/frontend
+    # If developing, you can add them:
+    # volumes:
+    #   - ./backend:/app/backend
+    #   - ./frontend:/app/frontend
+    #   - ./db:/app/db
 
 volumes:
   postgres_data:

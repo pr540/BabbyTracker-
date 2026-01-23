@@ -2,115 +2,17 @@ from fastapi import FastAPI, Request, Form, Depends, File, UploadFile, HTTPExcep
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship
+from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 from datetime import datetime, timedelta
 import os
 import shutil
 import random
 from typing import Optional
-from twilio.rest import Client
 
-# Twilio Credentials (User needs to fill these in for physical SMS delivery)
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "ACxxxxxxxxxxxxxxxxxxxxxxxx")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "xxxxxxxxxxxxxxxxxxxxxxxx")
-TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "+1234567890")
-
-# Database Setup
-# User must ensure PostgreSQL is running. Defaulting to standard local credentials.
-# Ideally, retrieve this from environment variables.
-postgres_url = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost/babytracker")
-sqlite_url = "sqlite:///./baby_tracker.db"
-
-try:
-    # Try creating engine with Postgres
-    engine = create_engine(postgres_url)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    Base = declarative_base()
-    
-    # Try to connect (this will trigger the error if creds are wrong)
-    with engine.connect() as connection:
-        pass
-        
-    print("Connected to PostgreSQL")
-
-except Exception as e:
-    print(f"PostgreSQL connection failed: {e}")
-    print("Falling back to SQLite...")
-    
-    engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    Base = declarative_base()
-
-# Models
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String, unique=True, index=True)
-    created_at = Column(DateTime, default=datetime.now)
-    
-    baby = relationship("Baby", uselist=False, back_populates="parent")
-
-class Baby(Base):
-    __tablename__ = "babies"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    gender = Column(String, default="Girl")
-    birth_date = Column(String, nullable=True)
-    weight = Column(String, nullable=True)
-    photo_url = Column(String, nullable=True)
-    parent_id = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.now)
-    
-    parent = relationship("User", back_populates="baby")
-    sleeps = relationship("SleepEvent", back_populates="baby")
-    cries = relationship("CryEvent", back_populates="baby")
-    tasks = relationship("Task", back_populates="baby")
-    night_recordings = relationship("NightRecording", back_populates="baby")
-
-class SleepEvent(Base):
-    __tablename__ = "sleep_events"
-    id = Column(Integer, primary_key=True, index=True)
-    baby_id = Column(Integer, ForeignKey("babies.id"))
-    start_time = Column(DateTime, default=datetime.now)
-    end_time = Column(DateTime, nullable=True)
-    is_sleeping = Column(Boolean, default=True)
-    
-    baby = relationship("Baby", back_populates="sleeps")
-
-class CryEvent(Base):
-    __tablename__ = "cry_events"
-    id = Column(Integer, primary_key=True, index=True)
-    baby_id = Column(Integer, ForeignKey("babies.id"))
-    timestamp = Column(DateTime, default=datetime.now)
-    intensity = Column(String, default="Normal")
-    audio_url = Column(String, nullable=True) # For voice tracker
-    
-    baby = relationship("Baby", back_populates="cries")
-
-class Task(Base):
-    __tablename__ = "tasks"
-    id = Column(Integer, primary_key=True, index=True)
-    baby_id = Column(Integer, ForeignKey("babies.id"))
-    title = Column(String)
-    is_completed = Column(Boolean, default=False)
-    due_time = Column(String, nullable=True)
-    category = Column(String, default="General") # Feeding, Diaper, etc.
-    completed_at = Column(DateTime, nullable=True)
-    
-    baby = relationship("Baby", back_populates="tasks")
-
-class NightRecording(Base):
-    __tablename__ = "night_recordings"
-    id = Column(Integer, primary_key=True, index=True)
-    baby_id = Column(Integer, ForeignKey("babies.id"))
-    timestamp = Column(DateTime, default=datetime.now)
-    audio_url = Column(String)
-    duration = Column(Integer) # In seconds
-    
-    baby = relationship("Baby", back_populates="night_recordings")
+from db.database import engine, get_db, Base
+from db.models import User, Baby, SleepEvent, CryEvent, Task, NightRecording, OTP
+from .auth import router as auth_router
 
 # Create Tables
 Base.metadata.create_all(bind=engine)
@@ -118,51 +20,24 @@ Base.metadata.create_all(bind=engine)
 # App Setup
 app = FastAPI()
 
-# Session Middleware for Login/Auth
+# Session Middleware
 app.add_middleware(SessionMiddleware, secret_key="super-secret-random-key")
 
-# Mount Static
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Mount Static from frontend folder
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
-# Templates
-templates = Jinja2Templates(directory="app/templates")
+# Templates from frontend folder
+templates = Jinja2Templates(directory="frontend/templates")
 
-# Dependencies
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Include Auth Router
+app.include_router(auth_router)
 
-def send_sms(to_phone: str, message: str):
-    try:
-        # Auto-format for India if no country code provided
-        if not to_phone.startswith('+'):
-            if len(to_phone) == 10:
-                to_phone = f"+91{to_phone}"
-            else:
-                to_phone = f"+{to_phone}" # Try to treat as raw country code prepended
-        
-        if "xxx" in TWILIO_ACCOUNT_SID:
-            print(f"DEBUG: Real Twilio credentials missing. SMS that would have been sent to {to_phone}: {message}")
-            return
-            
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        client.messages.create(
-            body=message,
-            from_=TWILIO_PHONE_NUMBER,
-            to=to_phone
-        )
-        print(f"SMS sent successfully to {to_phone}")
-    except Exception as e:
-        print(f"Failed to send SMS to {to_phone}: {str(e)}")
-
-# Routes
-
+# Utility Functions
 async def get_dashboard_data(db: Session, user: User):
     baby = user.baby
-    
+    if not baby:
+        return None
+        
     # Get baby status
     ongoing_sleep = db.query(SleepEvent).filter(SleepEvent.baby_id == baby.id, SleepEvent.end_time == None).first()
     recent_cries = db.query(CryEvent).filter(CryEvent.baby_id == baby.id).order_by(CryEvent.timestamp.desc()).limit(5).all()
@@ -245,6 +120,7 @@ async def get_dashboard_data(db: Session, user: User):
         "night_recordings": night_recordings
     }
 
+# Routes
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, db: Session = Depends(get_db)):
     user_id = request.session.get("user_id")
@@ -284,45 +160,6 @@ async def monitor_page(request: Request, db: Session = Depends(get_db)):
     data = await get_dashboard_data(db, user)
     return templates.TemplateResponse("monitor.html", {"request": request, **data})
 
-# --- Auth Routes ---
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.post("/login/otp")
-async def send_otp(request: Request, phone: str = Form(...), db: Session = Depends(get_db)):
-    # Random 4-digit OTP
-    otp_val = str(random.randint(1000, 9999))
-    request.session["otp_" + phone] = otp_val
-    
-    # Send via real SMS
-    send_sms(phone, f"Your BabyTracker Verification Code is: {otp_val}")
-    
-    print(f"OTP for {phone}: {otp_val}") 
-    
-    # Pass raw_otp to template ONLY if Twilio is unconfigured (for debugging)
-    template_data = {"request": request, "phone": phone}
-    if "xxx" in TWILIO_ACCOUNT_SID:
-        template_data["raw_otp"] = otp_val
-        
-    return templates.TemplateResponse("verify_otp.html", template_data)
-
-@app.post("/login/verify")
-async def verify_otp(request: Request, phone: str = Form(...), otp: str = Form(...), db: Session = Depends(get_db)):
-    stored_otp = request.session.get("otp_" + phone)
-    if not stored_otp or otp != stored_otp:
-        return templates.TemplateResponse("verify_otp.html", {"request": request, "phone": phone, "error": "Invalid or expired OTP", "raw_otp": stored_otp})
-    
-    # Auth success
-    user = db.query(User).filter(User.phone_number == phone).first()
-    if not user:
-        user = User(phone_number=phone)
-        db.add(user)
-        db.commit()
-    
-    request.session["user_id"] = user.id
-    return RedirectResponse(url="/", status_code=303)
-
 @app.post("/update-baby")
 async def update_baby(
     request: Request,
@@ -346,12 +183,6 @@ async def update_baby(
     db.commit()
     return RedirectResponse(url="/profile?status=baby_updated", status_code=303)
 
-@app.get("/logout")
-async def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/login")
-
-# --- Baby Registration ---
 @app.get("/register-baby", response_class=HTMLResponse)
 async def register_baby_page(request: Request):
     return templates.TemplateResponse("register_baby.html", {"request": request})
@@ -376,12 +207,11 @@ async def register_baby(
         return RedirectResponse(url="/login", status_code=303)
         
     if user.baby:
-        return RedirectResponse(url="/", status_code=303) # Already has one
+        return RedirectResponse(url="/", status_code=303)
         
     photo_url = None
-    # Check if photo is provided and has a filename
     if photo and photo.filename:
-        upload_dir = "app/static/uploads"
+        upload_dir = "frontend/static/uploads"
         os.makedirs(upload_dir, exist_ok=True)
         filename = f"{user_id}_{random.randint(1000,9999)}_{photo.filename}"
         file_path = os.path.join(upload_dir, filename)
@@ -403,7 +233,6 @@ async def register_baby(
     
     return RedirectResponse(url="/", status_code=303)
 
-# --- Actions ---
 @app.post("/sleep/toggle")
 async def toggle_sleep(request: Request, db: Session = Depends(get_db)):
     user_id = request.session.get("user_id")
@@ -436,7 +265,6 @@ async def log_cry(
     audio: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    print(f"DEBUG: Cry POST received. Intensity: {intensity}")
     user_id = request.session.get("user_id")
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.baby:
@@ -444,19 +272,14 @@ async def log_cry(
 
     audio_url = None
     if audio and audio.filename and len(audio.filename) > 0:
-        print(f"DEBUG: Audio file detected: {audio.filename}")
-        upload_dir = "app/static/uploads/cries"
+        upload_dir = "frontend/static/uploads/cries"
         os.makedirs(upload_dir, exist_ok=True)
         filename = f"cry_{user.baby.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.webm"
         file_path = os.path.join(upload_dir, filename)
         
-        try:
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(audio.file, buffer)
-            audio_url = f"/static/uploads/cries/{filename}"
-            print(f"DEBUG: Audio saved to {audio_url}")
-        except Exception as e:
-            print(f"DEBUG: Failed to save audio: {e}")
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(audio.file, buffer)
+        audio_url = f"/static/uploads/cries/{filename}"
 
     new_cry = CryEvent(
         baby_id=user.baby.id, 
@@ -489,7 +312,7 @@ async def skip_task(task_id: int, request: Request, db: Session = Depends(get_db
         
     task = db.query(Task).filter(Task.id == task_id, Task.baby_id == user.baby.id).first()
     if task:
-        db.delete(task) # Or mark as skipped if we have a status, here we just remove/skip
+        db.delete(task)
         db.commit()
     
     return RedirectResponse(url="/?status=task_skipped", status_code=303)
@@ -511,13 +334,12 @@ async def toggle_task(task_id: int, request: Request, db: Session = Depends(get_
 
 @app.post("/voice-log")
 async def voice_log(request: Request, audio: UploadFile = File(...), intensity: Optional[str] = Form("Voice Detect"), db: Session = Depends(get_db)):
-    # Handle voice blob upload
     user_id = request.session.get("user_id")
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.baby:
          return JSONResponse({"status": "error", "message": "Unauthorized"}, status_code=401)
          
-    upload_dir = "app/static/uploads/voice"
+    upload_dir = "frontend/static/uploads/voice"
     os.makedirs(upload_dir, exist_ok=True)
     filename = f"{user.baby.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.webm"
     file_path = os.path.join(upload_dir, filename)
@@ -543,7 +365,7 @@ async def upload_night_recording(
     if not user or not user.baby:
         return JSONResponse({"status": "error", "message": "Unauthorized"}, status_code=401)
         
-    upload_dir = "app/static/uploads/night"
+    upload_dir = "frontend/static/uploads/night"
     os.makedirs(upload_dir, exist_ok=True)
     filename = f"night_{user.baby.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.webm"
     file_path = os.path.join(upload_dir, filename)
@@ -573,7 +395,6 @@ async def analysis(request: Request, db: Session = Depends(get_db)):
     all_sleeps = db.query(SleepEvent).filter(SleepEvent.baby_id == baby.id).order_by(SleepEvent.start_time.desc()).all()
     all_cries = db.query(CryEvent).filter(CryEvent.baby_id == baby.id).order_by(CryEvent.timestamp.desc()).all()
     
-    from datetime import timedelta
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     dates = []
     sleep_data = []
