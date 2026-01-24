@@ -52,10 +52,17 @@ class Task(Base):
     __tablename__ = "tasks"
     id = Column(Integer, primary_key=True, index=True)
     baby_id = Column(Integer, ForeignKey("babies.id"))
-    title = Column(String)
+    title = Column(String) # Task Name
     is_completed = Column(Boolean, default=False)
-    due_time = Column(String, nullable=True)
+    due_time = Column(String, nullable=True) # Selected Time
     category = Column(String, default="General")
+    
+    # New Fields
+    action_type = Column(String, default="Daily") # Day, Daily, Weekly, Monthly
+    photo_url = Column(String, nullable=True)
+    interval_minutes = Column(Integer, default=0) # Intervals time
+    interval_count = Column(Integer, default=1)   # How many intervals
+    
     completed_at = Column(DateTime, nullable=True)
     
     baby = relationship("Baby", back_populates="tasks")

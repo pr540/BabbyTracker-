@@ -15,11 +15,16 @@ const Login = () => {
     try {
       const formData = new FormData();
       formData.append('phone', phone);
-      await api.post('/login/otp', formData);
-      navigate('/verify-otp', { state: { phone } });
+      const res = await api.post('/login/otp', formData);
+      navigate('/verify-otp', { state: { phone, debugOtp: res.data.otp_debug } });
     } catch (err) {
-      console.error(err);
-      alert('Failed to send OTP: ' + (err.response?.data?.detail || err.message));
+      console.error('OTP Send Error:', err);
+      // Fallback for network errors that don't have response
+      const errorMessage = err.response?.data?.detail
+        || err.response?.data?.message
+        || err.message
+        || 'Network Error - Check Backend';
+      alert('Failed to send OTP: ' + errorMessage);
     } finally {
       setLoading(false);
     }

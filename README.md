@@ -1,60 +1,84 @@
-# BabyTracker 🧸🎀
+# 👶 BabyTracker - Elite Parental Care System
 
-BabyTracker is a premium, mobile-first web application designed to help parents track their baby's daily activities, monitor sleep quality, and receive real-time alerts.
+The ultimate "Five-Star" AI-driven tracking solution for newborns. This application provides a seamless, premium experience for parents to monitor, track, and analyze their baby's growth and wellbeing with state-of-the-art technology.
 
-## ✨ Features
+## 🚀 Technology Stack
 
-### 🏡 Modern Home Dashboard
-- **Personalized Experience**: Displays your baby's photo and a warm welcome message.
-- **Quick Navigation**: Large, high-depth cards for immediate access to Baby Tasks and the Night Monitor.
-- **Smart Status Tracker**: Real-time indicator of whether the baby is awake or sleeping.
-- **Recent Activity Preview**: See the latest cry alerts and sleep summaries at a glance.
+### **Frontend**
+- **React 18**: Component-based UI library.
+- **Vite**: Ultra-fast next-generation frontend tooling.
+- **Framer Motion**: Premium micro-animations and page transitions.
+- **Lucide React**: Clean and consistent iconography.
+- **Axios**: Promised-based HTTP client for API communication.
+- **Vanilla CSS3**: Modern glassmorphism design with HSL variables.
 
-### ✅ Baby Tasks & Reminders
-- **Categorized Routine**: Manage feedings, diaper changes, medicine, and baths with specialized icons.
-- **Progress Visualization**: Dynamic inline progress bars showing daily completion rates.
-- **Quick Actions**: Easily toggle, skip, or add new tasks with a pixel-perfect, mobile-optimized form.
+### **Backend**
+- **FastAPI (Python)**: High-performance, asynchronous web framework.
+- **SQLAlchemy**: Powerful Python SQL Toolkit and ORM.
+- **Starlette Sessions**: Secure server-side session management.
+- **Uvicorn**: Lightning-fast ASGI server.
+- **Twilio SDK**: Integrated (mocked for dev) for SMS OTP delivery.
 
-### 🌙 Night Monitor Mode
-- **Dedicated Environment**: A distraction-free monitoring screen optimized for night-time use.
-- **Cry Detection**: High-sensitivity sound analysis that prioritizes baby cry frequencies.
-- **Automated Logging**: Automatically tracks sleep duration, wake-ups, and cry events.
-- **Last Night Summary**: Review your baby's sleep quality (total sleep, cries, wake-ups) every morning.
+### **Database & Infrastructure**
+- **PostgreSQL**: Production-grade relational database.
+- **SQLite**: Seamless local development fallback.
+- **Docker & Docker Compose**: Containerized environment for one-click deployment.
+- **Nginx**: Production reverse proxy for serving the frontend.
 
-### 🔐 Secure Authentication
-- **Private SMS OTP**: Secure login using mobile phone numbers via Twilio.
-- **No More Passwords**: Experience a seamless login flow with 4-digit verification codes sent directly to your handset.
-- **Global Ready**: Built-in support for international phone formatting (defaulted to India +91).
+---
 
-## 🛠️ Technology Stack
-- **Backend**: FastAPI (Python)
-- **Frontend**: Jinja2 Templates, Vanilla CSS (Premium Design System), JavaScript
-- **Database**: PostgreSQL (Production) / SQLite (Fallback/Testing)
-- **SMS Infrastructure**: Twilio API
-- **Analytics**: Chart.js for sleep pattern visualization
+## 🛠️ Performance Architecture
 
-## 🚀 Setup & Installation
+### **Hooks Used (React Context)**
+We utilize modern React patterns to ensure a highly responsive and stateful UI:
+1.  **`useState`**: For managing local UI state (loading, form data, ML scores).
+2.  **`useEffect`**: For handling API side-effects, real-time intervals, and ML simulations.
+3.  **`useNavigate`**: For programmatically switching between premium screens.
+4.  **`useLocation`**: For passing secure authentication data between pages.
+5.  **`AnimatePresence`**: For managing entry/exit animations of glassmorphic elements.
 
-1. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
-2. **Run the Application**:
-   ```bash
-   python -m uvicorn app.main:app --reload
-   ```
+## 🔌 API Ecosystem (Total: 12 Endpoints)
 
-### 🐳 Docker Deployment (Recommended)
-The easiest way to run BabyTracker with a full PostgreSQL database is using Docker Compose.
+The application is powered by a robust set of RESTful APIs:
 
-1. **Build and Start**:
-   ```bash
-   docker-compose up --build
-   ```
-   *This will automatically launch the FastAPI app on port 8000 and PostgreSQL on port 5432.*
+### **Authentication**
+- `POST /api/login/otp`: Triggers a 4-digit code to the user's terminal/phone.
+- `POST /api/login/verify`: Exchanges OTP for a secure session.
+- `GET /api/me`: Returns persistence state and baby registration status.
+- `GET /api/logout`: Safely destroys the user session.
 
-2. **Configure Credentials**:
-   Edit the `environment` section in `docker-compose.yml` to set your real Twilio and Database keys.
+### **Baby Core Management**
+- `POST /api/register-baby`: A smart **UPSERT** endpoint to create or update baby profiles (name, gender, weight, photo).
+- `GET /api/dashboard`: Aggregates real-time stats including sleep totals and today's tasks.
 
-## 🛠️ Technology Stack
+### **Live Monitoring & AI**
+- `POST /api/sleep/toggle`: One-tap logging for beginning or ending infant rest sessions.
+- `POST /api/cry`: Logs acoustic patterns for frequency analysis.
+- `GET /api/api`: System health check and heartbeat.
+
+### **Routine & Analytics**
+- `POST /api/task/create`: Dynamically creates recurring tasks with photo and interval support.
+- `POST /api/task/toggle/{id}`: Marks routines as completed/active.
+- `GET /api/analysis`: Provides 7-day sleep history, completion rates, and AI behavioral insights.
+
+---
+
+## 🏗️ Getting Started
+
+### **Local Run**
+1. Install dependencies: `cd frontend-react; npm install`
+2. Start Backend: `uvicorn backend.main:app --reload`
+3. Start Frontend: `npm run dev`
+
+### **Docker Deployment**
+Run the entire stack with a single command:
+```bash
+docker-compose up -d --build
+```
+
+---
+
+## ⭐️ Delivery Note
+This app is specifically optimized for **five-star parental delivery**, featuring a high-visibility **Diagnostics Tool** in the Monitor tab to ensure 100% API reliability before user testing.

@@ -24,7 +24,6 @@ services:
       - TWILIO_PHONE_NUMBER=+1234567890
     depends_on:
       - db
-    # Frontend will communicate via container name 'web'
 
   frontend:
     build:
